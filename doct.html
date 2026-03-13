@@ -8,6 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet" />
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
     <!-- Firebase -->
     <script>
@@ -104,8 +105,6 @@
             setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 400); }, 3200);
         };
 
-        // ─── DEMO MODE FLAG ───
-        window._isDemoMode = false;
 
         // ─── TAXBOT KNOWLEDGE BASE (works without API key) ───
         var TAXBOT_KB = {
@@ -182,7 +181,6 @@
         window.doLogin = function () { toast("Connecting to server... try again in a moment", "info"); };
         window.doSignup = function () { toast("Connecting to server... try again in a moment", "info"); };
         window.doLogout = function () {
-            window._isDemoMode = false;
             window.currentUser = null; window.currentProfile = null;
             try { applySession(); } catch (e) { }
             showPage('home');
@@ -191,19 +189,14 @@
         };
         window.goMarket = function () { showPage("market"); };
         window.goClientDash = function () {
-            if (window._isDemoMode) {
+            if (window.currentUser && window.currentProfile) {
                 showPage("client-dash");
-            } else if (window.currentUser && window.currentProfile) {
-                showPage("client-dash");
-                // The module script will handle loading data via onAuthStateChanged or manual calls
             } else {
                 openAuth("login");
             }
         };
         window.goCADash = function () {
-            if (window._isDemoMode) {
-                showPage("ca-dash");
-            } else if (window.currentUser && window.currentProfile) {
+            if (window.currentUser && window.currentProfile) {
                 if (window.currentProfile.role === "ca") {
                     showPage("ca-dash");
                 } else {
@@ -242,8 +235,7 @@
         window.openEditProfile = function () { };
         window.saveCAProfile = function () { };
         window.goDashFromMenu = function () {
-            if (window._isDemoMode) { if (window.currentProfile && window.currentProfile.role === 'ca') showPage('ca-dash'); else showPage('client-dash'); return; }
-            showPage("home");
+            if (window.currentProfile?.role === 'ca') window.goCADash(); else window.goClientDash();
         };
         window.markNotifRead = function () { };
     </script>
@@ -518,7 +510,11 @@
       <div class="prog-info"><div class="prog-name">${b.caName}</div>
         <div style="font-size:.75rem;margin-top:3px"><span style="color:${sc};font-weight:600">${si} ${b.status.charAt(0).toUpperCase() + b.status.slice(1)}</span><span style="color:var(--t3)"> · ${fmtDate(b.createdAt)}</span></div>
       </div>
-      ${b.status !== "rejected" ? `<button class="btn btn-ghost btn-sm" onclick="openChat('${b.id}','${b.caId}','${b.caName}')">Message</button>` : ""}
+      ${b.status !== "rejected" ? `
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openChat('${b.id}','${b.caId}','${b.caName}')">💬 Message</button>
+          ${b.paymentStatus !== 'paid' ? `<button class="btn btn-primary btn-sm" onclick="initiatePayment('${b.id}','${b.caName}',${b.requestedAmount || b.caFee || 1500})">💳 Pay ₹${b.requestedAmount || b.caFee || 1500}</button>` : `<span style="font-size:.75rem;color:var(--green);font-weight:600;display:flex;align-items:center;gap:4px">✅ Paid</span>`}
+        </div>` : ""}
     </div>`;
             }).join("");
         }
@@ -593,6 +589,7 @@
           <button class="btn btn-ghost btn-sm" onclick="viewClientDocs('${b.clientId}','${b.clientName}')">Docs</button>
           ${b.status === "pending" ? `<button class="btn btn-sm" style="background:var(--green-d);color:var(--green);border:1px solid rgba(16,185,129,.3)" onclick="updateBookingStatus('${b.id}','active','${b.clientName}')">✓ Accept</button><button class="btn btn-sm" style="background:var(--red-d);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="updateBookingStatus('${b.id}','rejected','${b.clientName}')">✕ Decline</button>` : ""}
           ${b.status === "active" ? `<button class="btn btn-sm" style="background:var(--green-d);color:var(--green);border:1px solid rgba(16,185,129,.3)" onclick="updateBookingStatus('${b.id}','completed','${b.clientName}')">✓ Complete</button>` : ""}
+          <button class="btn btn-sm" style="background:var(--gold-d);color:var(--gold);border:1px solid rgba(255,215,0,.3)" onclick="requestPayment('${b.id}','${b.clientName}')">💰 Request Payment</button>
         </div>
       </div>`;
             }).join("")}`;
@@ -755,6 +752,66 @@
             } catch (e) { toast("Update failed: " + e.message, "error"); }
         };
 
+        window.initiatePayment = async function (bookingId, caName, amount) {
+            el("payment-modal-body").innerHTML = `
+                <div style="margin-bottom:20px">
+                    <div style="font-size:.8rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;font-weight:700">Service Fee</div>
+                    <div style="font-size:2.2rem;font-weight:800;font-family:'Syne',sans-serif;margin:5px 0">₹${amount}</div>
+                    <div style="font-size:.85rem;color:var(--t2)">Payable to <strong>${caName}</strong></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                    <button class="btn btn-primary btn-lg" id="pay-btn" style="width:100%;justify-content:center" onclick="confirmPayment('${bookingId}', ${amount})">Complete Secure Payment</button>
+                    <button class="btn btn-ghost btn-md" onclick="closeModal('payment-modal')" style="width:100%">Cancel</button>
+                </div>
+                <div style="margin-top:20px;text-align:center;font-size:.65rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px">Powered by Razorpay Secure</div>
+            `;
+            openModal("payment-modal");
+        };
+
+        window.confirmPayment = async function (bookingId, amount) {
+            setBtnLoading("pay-btn", true);
+            setTimeout(async () => {
+                try {
+                    await updateDoc(doc(db, "bookings", bookingId), {
+                        paymentStatus: 'paid',
+                        paidAmount: amount,
+                        transactionId: 'LX' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+                        paidAt: serverTimestamp()
+                    });
+                    toast("Payment Successful! 🎉", "success");
+                    closeModal("payment-modal");
+                    loadClientDash();
+                } catch (e) {
+                    toast("Payment failed: " + e.message, "error");
+                    setBtnLoading("pay-btn", false);
+                }
+            }, 1800);
+        };
+
+        window.requestPayment = async function (bookingId, clientName) {
+            const amount = prompt("Enter amount to request from " + clientName + " (₹):", "1500");
+            if (!amount || isNaN(amount)) return;
+            try {
+                await updateDoc(doc(db, "bookings", bookingId), {
+                    paymentRequested: true,
+                    requestedAmount: Number(amount),
+                    paymentStatus: 'pending_payment'
+                });
+                const bSnap = await getDoc(doc(db, "bookings", bookingId));
+                await addDoc(collection(db, "notifications"), {
+                    toId: bSnap.data().clientId,
+                    fromName: currentProfile.displayName,
+                    message: `CA ${currentProfile.displayName} has requested a payment of ₹${amount} for your filing.`,
+                    read: false,
+                    createdAt: serverTimestamp()
+                });
+                toast("Payment request sent to " + clientName, "success");
+                loadCADash();
+            } catch (e) {
+                toast("Request failed: " + e.message, "error");
+            }
+        };
+
 
 
         function greetTime(name) { const h = new Date().getHours(); return (h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + ", " + name + " 👋"; }
@@ -880,110 +937,6 @@
 
         window.goDashFromMenu = function () { if (currentProfile?.role === "ca") goCADash(); else goClientDash(); };
 
-        // ─── DEMO LOGIN ───
-        window.demoLogin = function (role) {
-            closeAuth();
-            window._isDemoMode = true;
-            currentUser = { uid: 'demo-' + role };
-            window.currentUser = currentUser;
-            currentProfile = role === 'client' ? {
-                uid: 'demo-client', role: 'client',
-                first: 'Priya', last: 'Sharma',
-                displayName: 'Priya Sharma',
-                email: 'priya.demo@ledgerx.in',
-                phone: '9876543210', city: 'Mumbai',
-                riskScore: 28, riskLevel: 'Low',
-                riskReason: 'All documents verified. No anomalies detected.',
-                filings: []
-            } : {
-                uid: 'demo-ca', role: 'ca',
-                first: 'Rajesh', last: 'Mehta',
-                displayName: 'Rajesh Mehta',
-                email: 'rajesh.ca@ledgerx.in',
-                phone: '9123456789', city: 'Delhi',
-                caNum: 'ICAI-045892', exp: 12,
-                specs: ['Tax Filing & ITR', 'GST Compliance', 'Audit & Assurance'],
-                fee: 8500, bio: 'Senior CA with 12 years of practice in corporate tax and GST.',
-                rating: 4.8, reviewCount: 47, verified: true, clientCount: 134
-            };
-
-            window.currentProfile = currentProfile;
-            applySession();
-            // Override doLogout for demo — no Firebase signOut needed
-            window.doLogout = function () {
-                window._isDemoMode = false;
-                currentUser = null; currentProfile = null;
-                window.currentUser = null; window.currentProfile = null;
-                applySession();
-                showPage('home');
-                closeUserMenu();
-                toast('Logged out', 'info');
-            };
-            toast('👋 Logged in as Demo ' + (role === 'ca' ? 'CA' : 'Client'), 'success');
-
-            if (role === 'ca') {
-                showPage('ca-dash');
-                // Render demo CA dash manually
-                el('cad-greeting').textContent = greetTime('CA Rajesh');
-                el('cad-sub').textContent = 'CA No: ICAI-045892 · Delhi';
-                el('cad-w-clients').textContent = '7';
-                el('cad-w-rating').textContent = '4.8';
-                el('cad-w-reviews').textContent = '47';
-                el('cad-w-exp').textContent = '12 yrs';
-                el('cad-rev-total').textContent = '₹59,500';
-                el('cad-rev-change').textContent = '↑ 7 bookings this quarter';
-                el('cad-rev-change').style.color = 'var(--green)';
-                el('cad-clients').innerHTML = [
-                    { name: 'Priya Sharma', status: 'active', date: '12 Mar' },
-                    { name: 'Arjun Nair', status: 'pending', date: '14 Mar' },
-                    { name: 'Sunita Patel', status: 'completed', date: '02 Mar' },
-                    { name: 'Rohit Gupta', status: 'active', date: '08 Mar' },
-                ].map(b => `<div class="prog-item">
-      <div class="prog-dot pd-b" style="font-size:.8rem">👤</div>
-      <div class="prog-info"><div class="prog-name">${b.name}</div>
-        <div style="font-size:.73rem;color:var(--t3);margin-top:2px">${b.date}</div>
-      </div>
-      <span class="prog-status ${b.status === 'active' ? 's-on' : b.status === 'pending' ? 's-pend' : 's-done'}">${b.status}</span>
-    </div>`).join('');
-                el('cad-docs').innerHTML = [
-                    { name: 'Form16_Priya.pdf', by: 'Priya Sharma', analyzed: true },
-                    { name: 'BankStatement_Arjun.pdf', by: 'Arjun Nair', analyzed: false },
-                    { name: 'GST_Invoice_Sunita.pdf', by: 'Sunita Patel', analyzed: true },
-                ].map(d => `<div class="doc-row"><span class="dic">📄</span><span class="dname">${d.name}</span><span style="font-size:.72rem;color:var(--t3)">by ${d.by}</span><span class="dstat ${d.analyzed ? 'dv' : 'da'}">${d.analyzed ? '✓ Analyzed' : '⏳ Pending'}</span></div>`).join('');
-                setTimeout(() => renderLineChart('cad-chart-wrap', ['Jan', 'Feb', 'Mar'], [8500, 17000, 34000], '₹', '#f59e0b', '#f97316'), 200);
-                el('cad-pending-badge').textContent = '1'; el('cad-pending-badge').style.display = '';
-            } else {
-                showPage('client-dash');
-                el('cd-greeting').textContent = greetTime('Priya');
-                el('cd-sub').textContent = 'FY 2024-25 · priya.demo@ledgerx.in';
-                el('cd-w-bookings').textContent = '2';
-                el('cd-w-docs').textContent = '3';
-                el('cd-w-risk').textContent = '28/100';
-                el('cd-risk-num').textContent = '28/100';
-                el('cd-risk-num').style.color = 'var(--green)';
-                el('cd-risk-reason').textContent = 'All documents verified. No anomalies detected.';
-                setTimeout(() => { el('cd-risk-thumb').style.left = '28%'; }, 300);
-                el('cd-bookings').innerHTML = [
-                    { caName: 'Rajesh Mehta CA', status: 'active', date: '12 Mar' },
-                    { caName: 'Deepa Iyer CA', status: 'pending', date: '15 Mar' },
-                ].map(b => `<div class="prog-item">
-      <div class="prog-dot pd-b" style="font-size:.8rem">🧑‍💼</div>
-      <div class="prog-info"><div class="prog-name">${b.caName}</div>
-        <div style="font-size:.73rem;margin-top:2px"><span style="color:${b.status === 'active' ? 'var(--green)' : 'var(--gold)'};font-weight:600">${b.status === 'active' ? '✅ Active' : '⏳ Pending'}</span><span style="color:var(--t3)"> · ${b.date}</span></div>
-      </div>
-    </div>`).join('');
-                el('cd-docs').innerHTML = [
-                    { name: 'Form16_FY2425.pdf', analyzed: true },
-                    { name: 'BankStatement_Mar.pdf', analyzed: true },
-                    { name: 'GST_Invoice.pdf', analyzed: false },
-                ].map(d => `<div class="doc-row"><span class="dic">📄</span><span class="dname">${d.name}</span><span class="dstat ${d.analyzed ? 'dv' : 'da'}">${d.analyzed ? '✓ Analyzed' : '⏳ Pending'}</span></div>`).join('');
-                el('cd-rev-total').textContent = '3 docs';
-                el('cd-rev-change').textContent = '↑ Documents uploaded';
-                el('cd-rev-change').style.color = 'var(--green)';
-                setTimeout(() => renderLineChart('cd-chart-wrap', ['Jan', 'Feb', 'Mar'], [1, 1, 1], '', '#3b82f6', '#06b6d4'), 200);
-                updateDeadlineCountdowns();
-            }
-        };
         console.log("✅ LedgerX initialized.");
     </script>
 
@@ -3683,36 +3636,7 @@
 
             <!-- LOGIN -->
             <div id="login-form" class="auth-form">
-                <!-- DEMO BUTTONS -->
-                <div
-                    style="background:rgba(29,155,240,.06);border:1px solid rgba(29,155,240,.18);border-radius:12px;padding:14px;margin-bottom:4px">
-                    <div
-                        style="font-size:.68rem;font-weight:700;letter-spacing:.8px;color:var(--blue-l);margin-bottom:10px;text-transform:uppercase">
-                        ⚡ Demo Access</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <button onclick="demoLogin('client')"
-                            style="display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--n800);border:1px solid var(--x-border);border-radius:10px;padding:10px 8px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif"
-                            onmouseenter="this.style.borderColor='rgba(29,155,240,.5)';this.style.background='rgba(29,155,240,.08)'"
-                            onmouseleave="this.style.borderColor='var(--x-border)';this.style.background='var(--n800)'">
-                            <span style="font-size:1.3rem">👤</span>
-                            <span style="font-size:.8rem;font-weight:700;color:var(--t1)">Demo Client</span>
-                            <span style="font-size:.67rem;color:var(--t3)">View client dashboard</span>
-                        </button>
-                        <button onclick="demoLogin('ca')"
-                            style="display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--n800);border:1px solid var(--x-border);border-radius:10px;padding:10px 8px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif"
-                            onmouseenter="this.style.borderColor='rgba(255,215,0,.5)';this.style.background='rgba(255,215,0,.06)'"
-                            onmouseleave="this.style.borderColor='var(--x-border)';this.style.background='var(--n800)'">
-                            <span style="font-size:1.3rem">🧑‍💼</span>
-                            <span style="font-size:.8rem;font-weight:700;color:var(--t1)">Demo CA</span>
-                            <span style="font-size:.67rem;color:var(--t3)">View CA portal</span>
-                        </button>
-                    </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px;margin:2px 0">
-                    <div style="flex:1;height:1px;background:var(--x-border)"></div>
-                    <span style="font-size:.72rem;color:var(--t3)">or sign in with your account</span>
-                    <div style="flex:1;height:1px;background:var(--x-border)"></div>
-                </div>
+                <div style="margin-top:10px"></div>
                 <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="li-email"
                         type="email" placeholder="you@email.com" /></div>
                 <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="li-pass"
@@ -4059,6 +3983,20 @@
                     <h3>Loading CAs...</h3>
                     <p>Fetching from database</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MODAL: PAYMENT ═══ -->
+    <div id="payment-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width:420px;padding:0;overflow:hidden">
+            <div style="background:linear-gradient(135deg,#1d9bf0,#00d4e8);padding:30px;text-align:center;color:white">
+                <div style="font-size:2.5rem;margin-bottom:10px">💳</div>
+                <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem">Secure Payment</h2>
+                <p style="font-size:.85rem;opacity:.9;margin-top:4px">LedgerX Pay · Secure & Encrypted</p>
+            </div>
+            <div style="padding:24px" id="payment-modal-body">
+                <!-- Dynamic Content -->
             </div>
         </div>
     </div>
