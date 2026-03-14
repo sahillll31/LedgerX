@@ -1,24 +1,24 @@
 # LedgerX — India's Smartest CA Platform
 
-LedgerX is a premium, AI-powered marketplace connecting clients with Chartered Accountants (CAs) in India. It features automated tax filing assistance, real-time messaging, document analysis via OCR and Claude AI, and a smart matching system.
+LedgerX is a premium, AI-powered marketplace connecting clients with Chartered Accountants (CAs) in India. It features high-speed AI tax assistance, real-time messaging, document intelligence via OCR and Groq Llama-3, and a smart CA matching system.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **AI TaxBot**: Real-time tax assistance powered by Claude 3.5 Sonnet.
-- **Smart Marketplace**: Find and book verified CAs based on "AI Smart Score" (experience, ratings, and fees).
-- **Document Intelligence**: Upload financial documents for automatic OCR extraction and AI-driven analysis/risk assessment.
-- **Unified Dashboards**: Separate, data-rich portals for both Clients and CAs.
-- **Real-time Communication**: Integrated chat system with instant notifications.
-- **Secure Storage**: Firebase-backed secure document management.
+- **TaxBot AI**: High-speed, real-time tax assistance powered by **Groq Llama-3.1-8b**, specialized in Indian tax laws.
+- **Smart Marketplace**: Connect with verified CAs ranked by an AI scoring system (Specialization, Experience, Rating, Price).
+- **Document Intelligence**: Instant OCR extraction and **Groq-driven** analysis for document categorization and error detection.
+- **Fraud Risk Assessment**: Real-time risk scoring for uploaded documents using Llama-3 anomaly detection.
+- **Unified Messaging**: Integrated communication system allowing Clients and CAs to chat instantly without database indexing delays.
+- **Secure Storage**: Firebase-backed document management and real-time database sync.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Vanilla HTML5, CSS3 (Glassmorphism), JavaScript (ES6+).
-- **Backend**: Firebase (Authentication, Firestore, Storage).
-- **AI/ML**: 
-  - Anthropic Claude 3.5 Sonnet (via Cloud Functions proxy).
-  - OCR.space (Document text extraction).
-- **Cloud Functions**: Node.js 18 environment for secure API handling.
+- **Frontend**: Premium Vanilla UI (HTML5, CSS3 Glassmorphism, JavaScript ES6+).
+- **Backend**: Firebase (Authentication, Firestore, Cloud Storage).
+- **AI Engine**: 
+  - **Groq AI (Llama-3)**: High-speed LLM for chat and analysis.
+  - **OCR.space**: Advanced document text extraction.
+- **State Management**: Real-time Firestore sync and session persistence.
 
 ## 📦 Setup & Deployment
 
@@ -28,28 +28,23 @@ LedgerX is a premium, AI-powered marketplace connecting clients with Chartered A
    cd LedgerX
    ```
 
-2. **Install Cloud Functions dependencies**:
-   ```bash
-   cd functions
-   npm install
-   ```
+2. **Firebase Configuration**:
+   - Update the `firebaseConfig` object in `doct.html` with your project's credentials from the [Firebase Console](https://console.firebase.google.com/).
 
-3. **Configure Firebase**:
-   - Install Firebase CLI: `npm install -g firebase-tools`
-   - Login: `firebase login`
-   - Set active project: `firebase use ledgerx-47da3`
+3. **AI Configuration**:
+   - Obtain a free API key from the [Groq Console](https://console.groq.com/keys).
+   - Paste your key into `doct.html`:
+     ```javascript
+     const GROQ_API_KEY = "YOUR_GROQ_KEY_HERE";
+     ```
 
-4. **Add Secrets**:
-   Set your Anthropic API key for the Claude proxy:
-   ```bash
-   firebase functions:secrets:set CLAUDE_API_KEY
-   ```
+4. **Running Locally**:
+   Simply open `doct.html` in any modern web browser or use a live server extension.
 
-5. **Deploy**:
-   ```bash
-   firebase deploy
-   ```
+## 📜 Repository Guidelines
 
-## 📜 License
+- **API Security**: Never commit your live `GROQ_API_KEY` to the repository. Use the provided placeholder system.
+- **Deployment**: The project is optimized for direct browser access and Firebase Hosting.
 
-Created by Sahil for the LedgerX platform.
+---
+Built for the future of Indian FinTech by Sahil.
