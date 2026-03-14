@@ -208,22 +208,11 @@
         };
         window.loadMarketplace = function () { showPage("market"); };
         window.bookCA = function () { openAuth("login"); };
-        window.sendTaxbotMsg = function () {
-            var inp = el("taxbot-inp"), txt = inp.value.trim(); if (!txt) return;
-            inp.value = "";
-            appendTaxbotMsg(txt, "user");
-            var tid = "typing_" + Date.now(), msgs = el("taxbot-msgs");
-            var tp = document.createElement("div"); tp.className = "cmsg cmsg-ai"; tp.id = tid;
-            tp.innerHTML = '<div class="typing"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>';
-            msgs.appendChild(tp); msgs.scrollTop = msgs.scrollHeight;
-            setTimeout(function () {
-                var el2 = document.getElementById(tid); if (el2) el2.remove();
-                appendTaxbotMsg(getTaxbotResponse(txt), "ai");
-            }, 600 + Math.random() * 400);
-        };
-        window.quickAsk = function (q) { el("taxbot-inp").value = q; window.sendTaxbotMsg(); };
-        window.chatKeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); window.sendTaxbotMsg(); } };
-        window.taxbotKeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); window.sendTaxbotMsg(); } };
+        // Moved to module script for AI integration
+        window.sendTaxbotMsg = function () { };
+        window.quickAsk = function (q) { };
+        window.chatKeydown = function (e) { };
+        window.taxbotKeydown = function (e) { };
         window.filterMarketplace = function () { };
         window.openCAProfile = function () { };
         window.updateBookingStatus = function () { };
