@@ -258,6 +258,7 @@
         const GROQ_API_KEY = "PASTE_YOUR_GROQ_KEY_HERE";
         const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
         const GROQ_MODEL = "llama-3.1-8b-instant"; // Fast and efficient for chat and analysis
+        // Groq is integrated via direct REST API - proxy fallback remains for other services if needed
         const CLAUDE_FN_URL = "https://us-central1-ledgerx-47da3.cloudfunctions.net/askClaude";
 
         const app = initializeApp(firebaseConfig);
@@ -632,11 +633,16 @@
             el("chat-partner-name").textContent = partnerName;
             el("chat-msgs-wrap").innerHTML = loadingSpinner("Loading messages...");
             openModal("chat-modal");
-            const q = query(collection(db, "messages"), where("bookingId", "==", bookingId), orderBy("createdAt", "asc"));
+            const q = query(collection(db, "messages"), where("bookingId", "==", bookingId));
             const unsub = onSnapshot(q, snap => {
                 const msgs = []; snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+                // Sort locally by createdAt to avoid needing a Firestore composite index
+                msgs.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
                 renderChatMsgs(msgs);
                 msgs.filter(m => m.toId === currentUser.uid && !m.read).forEach(m => updateDoc(doc(db, "messages", m.id), { read: true }));
+            }, err => {
+                console.error("Chat Error:", err);
+                el("chat-msgs-wrap").innerHTML = `<div style="text-align:center;padding:30px;color:var(--red);font-size:.85rem">Failed to load messages: ${err.message}</div>`;
             });
             unsubscribeListeners.push(unsub);
         };
@@ -771,10 +777,10 @@ ${ocrText.slice(0, 500)}`
                     console.warn("Groq unexpected response or blocked:", d);
                     appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai");
                 }
-            } catch (e) { 
+            } catch (e) {
                 console.error("Chatbot Fetch Error:", e);
-                el(tid)?.remove(); 
-                appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai"); 
+                el(tid)?.remove();
+                appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai");
             }
         };
 
@@ -3848,7 +3854,7 @@ ${ocrText.slice(0, 500)}`
             <div class="hero-badge"><span class="pulse-dot"></span>AI-Powered · Verified CAs · Built for India</div>
             <h1><span style="display:block">India's Smartest</span><span class="grad-text">CA Platform</span></h1>
             <p class="hero-sub">Connect with verified Chartered Accountants for ITR, GST, Audit & Business Registration
-                — powered by AI matching, real-time messaging & Groq-powered document intelligence. </p>
+                — powered by AI matching, real-time messaging & Groq-powered document intelligence.</p>
             <div class="hero-cta">
                 <button class="btn btn-primary btn-lg" onclick="openAuth('signup')">Get started free</button>
                 <button class="btn btn-ghost btn-lg" onclick="goMarket()">Browse CAs</button>
@@ -3917,25 +3923,26 @@ ${ocrText.slice(0, 500)}`
                 <div class="ai-card fade-in d2">
                     <div class="ai-stripe as2"></div>
                     <div class="ai-ic">📄</div>
-                    <div class="ai-algo">ALGO: OCR.space API + Llama-3 Analysis</div>
+                    <div class="ai-algo">ALGO: OCR.space API + Groq Llama-3 Analysis</div>
                     <h3>Document Intelligence</h3>
-                    <p>Upload any document. OCR.space extracts text, Groq analyzes type, flags missing fields &
+                    <p>Upload any document. OCR.space extracts text, Groq Llama-3 analyzes type, flags missing fields &
                         updates your risk score live.</p><span class="ai-pill pill-g">📎 Real OCR + AI</span>
                 </div>
                 <div class="ai-card fade-in d3">
                     <div class="ai-stripe as3"></div>
                     <div class="ai-ic">🤖</div>
-                    <div class="ai-algo">ALGO: RAG + Intent Classification (Llama-3.1)</div>
+                    <div class="ai-algo">ALGO: RAG + Intent Classification (Groq Llama-3)</div>
                     <h3>AI Tax Assistant</h3>
-                    <p>Live Llama-3 chatbot trained on Indian tax law — GST rates, ITR deadlines, 80C tips,
+                    <p>Live Groq Llama-3 chatbot trained on Indian tax law — GST rates, ITR deadlines, 80C tips,
                         document checklists, all in real-time.</p><span class="ai-pill pill-c">💬 Live Groq API</span>
                 </div>
                 <div class="ai-card fade-in d4">
                     <div class="ai-stripe as4"></div>
                     <div class="ai-ic">🛡️</div>
-                    <div class="ai-algo">ALGO: Llama-3 Anomaly Detection + Firestore sync</div>
+                    <div class="ai-algo">ALGO: Groq Anomaly Detection + Firestore sync</div>
                     <h3>Fraud Risk Score</h3>
-                    <p>Groq AI analyzes every uploaded document and updates your live Risk Score in Firestore. CAs see
+                    <p>Groq Llama-3 analyzes every uploaded document and updates your live Risk Score in Firestore. CAs
+                        see
                         client risk before filing.</p><span class="ai-pill pill-r">🔴 Real-time score</span>
                 </div>
             </div>
@@ -3958,7 +3965,7 @@ ${ocrText.slice(0, 500)}`
                 <div class="step-item">
                     <div class="step-circle">03</div>
                     <h4>Upload & Analyze</h4>
-                    <p>OCR + Groq analyzes your docs and updates risk score live</p>
+                    <p>OCR + Groq Llama-3 analyzes your docs and updates risk score live</p>
                 </div>
                 <div class="step-item">
                     <div class="step-circle">04</div>
@@ -4225,7 +4232,7 @@ ${ocrText.slice(0, 500)}`
                         </div>
                         <div style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--green);margin-top:12px"
                             id="cd-risk-num">—</div>
-                        <div style="font-size:.71rem;color:var(--t3)">Gemini AI Analysis</div>
+                        <div style="font-size:.71rem;color:var(--t3)">Groq Llama-3 AI Analysis</div>
                         <div style="margin-top:10px;font-size:.81rem;color:var(--t2);line-height:1.7"
                             id="cd-risk-reason">Upload documents to generate your risk score.</div>
                     </div>
@@ -4377,7 +4384,7 @@ ${ocrText.slice(0, 500)}`
             <div class="chat-hd-av">🤖</div>
             <div class="chat-hd-info">
                 <h4>TaxBot AI</h4>
-                <p>● Online · Llama-3</p>
+                <p>● Online · Groq Llama-3</p>
             </div>
             <button class="chat-hd-close" onclick="toggleChatbot()">✕</button>
         </div>
@@ -4545,4 +4552,6 @@ ${ocrText.slice(0, 500)}`
     </script>
 </body>
 
-</html>
+</html>/ /   t e s t 
+ 
+ 
