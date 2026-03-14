@@ -736,10 +736,9 @@ ${ocrText.slice(0, 500)}`
                     el("cd-risk-num").style.color = risk.score < 30 ? "var(--green)" : risk.score < 60 ? "var(--gold)" : "var(--red)";
                     el("cd-risk-thumb").style.left = risk.score + "%"; el("cd-risk-reason").textContent = risk.reason || "";
                 }
-            } catch (e) { }
+            } catch (e) { console.error("Risk Score Error:", e); }
         }
 
-        window.quickAsk = function (q) { el("taxbot-inp").value = q; sendTaxbotMsg(); };
         window.sendTaxbotMsg = async function () {
             const inp = el("taxbot-inp"), txt = inp.value.trim(); if (!txt) return;
             inp.value = ""; appendTaxbotMsg(txt, "user");
@@ -766,8 +765,8 @@ ${ocrText.slice(0, 500)}`
                 } else if (d.candidates && d.candidates[0]?.content?.parts?.[0]?.text) {
                     appendTaxbotMsg(d.candidates[0].content.parts[0].text, "ai");
                 } else {
-                    console.warn("Gemini unexpected response:", d);
-                    appendTaxbotMsg(getTaxbotResponse(txt), "ai");
+                    console.warn("Gemini unexpected response or blocked:", d);
+                    appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai");
                 }
             } catch (e) { 
                 console.error("Chatbot Fetch Error:", e);
@@ -775,12 +774,17 @@ ${ocrText.slice(0, 500)}`
                 appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai"); 
             }
         };
+
         function appendTaxbotMsg(text, role) {
             const msgs = el("taxbot-msgs"), now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
             const d = document.createElement("div"); d.className = "cmsg cmsg-" + role;
             d.innerHTML = `<div class="cbubble">${text.replace(/\n/g, "<br>")}</div><div class="ctime">${now}</div>`;
             msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
         }
+
+        window.taxbotKeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); window.sendTaxbotMsg(); } };
+        window.chatKeydown = function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); window.sendTaxbotMsg(); } };
+        window.quickAsk = function (q) { el("taxbot-inp").value = q; window.sendTaxbotMsg(); };
 
         window.openEditProfile = function () {
             if (!currentProfile || currentProfile.role !== "ca") return;
