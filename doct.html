@@ -760,8 +760,20 @@ ${ocrText.slice(0, 500)}`
                     })
                 });
                 const d = await res.json(); el(tid)?.remove();
-                appendTaxbotMsg(d.candidates?.[0]?.content?.parts?.[0]?.text || getTaxbotResponse(txt), "ai");
-            } catch (e) { el(tid)?.remove(); appendTaxbotMsg(getTaxbotResponse(txt), "ai"); }
+                if (d.error) {
+                    console.error("Gemini API Error:", d.error);
+                    appendTaxbotMsg("🤖 AI Error: " + (d.error.message || "Unknown error"), "ai");
+                } else if (d.candidates && d.candidates[0]?.content?.parts?.[0]?.text) {
+                    appendTaxbotMsg(d.candidates[0].content.parts[0].text, "ai");
+                } else {
+                    console.warn("Gemini unexpected response:", d);
+                    appendTaxbotMsg(getTaxbotResponse(txt), "ai");
+                }
+            } catch (e) { 
+                console.error("Chatbot Fetch Error:", e);
+                el(tid)?.remove(); 
+                appendTaxbotMsg("Connection failed. Showing preloaded result:<br><br>" + getTaxbotResponse(txt), "ai"); 
+            }
         };
         function appendTaxbotMsg(text, role) {
             const msgs = el("taxbot-msgs"), now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
