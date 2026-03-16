@@ -105,6 +105,92 @@
             setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 400); }, 3200);
         };
 
+        // ═══ UTILITY FUNCTIONS — Generic helpers ═══
+        window.greetTime = function (name) {
+            const hr = new Date().getHours();
+            let g = "Good evening";
+            if (hr < 12) g = "Good morning";
+            else if (hr < 17) g = "Good afternoon";
+            return `${g}, ${name}! 👋`;
+        };
+
+        window.fmtDate = function (ts) {
+            if (!ts) return "—";
+            const d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+
+        window.formatBytes = function (bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024, dm = decimals < 0 ? 0 : decimals, sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        };
+
+        window.loadingSpinner = function (msg) {
+            return `<div class="loading-wrap"><div class="loading-spin"></div><div class="loading-text">${msg || 'Loading...'}</div></div>`;
+        };
+
+        window.emptyState = function (icon, title, sub) {
+            return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-sub">${sub}</div></div>`;
+        };
+
+        window.setBtnLoading = function (id, isLoading) {
+            const btn = el(id); if (!btn) return;
+            if (isLoading) {
+                btn.dataset.old = btn.innerHTML;
+                btn.innerHTML = '<span class="spin-s"></span> Processing...';
+                btn.disabled = true;
+            } else {
+                btn.innerHTML = btn.dataset.old || "Submit";
+                btn.disabled = false;
+            }
+        };
+
+        window.showAuthErr = function (msg) {
+            const e = el("auth-err"); if (!e) return;
+            e.textContent = msg; e.style.display = "block";
+            el("auth-msg").style.display = "none";
+        };
+
+        window.showAuthMsg = function (msg) {
+            const m = el("auth-msg"); if (!m) return;
+            m.textContent = msg; m.style.display = "block";
+            el("auth-err").style.display = "none";
+        };
+
+        window.renderLineChart = function (containerId, labels, data, prefix = "", color1 = "#3b82f6", color2 = "#06b6d4") {
+            const c = el(containerId); if (!c) return;
+            const max = Math.max(...data, 10), len = data.length;
+            const pts = data.map((v, i) => `${(i / (len - 1)) * 100},${100 - (v / max) * 100}`).join(" ");
+            c.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:140px;display:block">
+        <defs><linearGradient id="g_${containerId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color1}" stop-opacity="0.3"/><stop offset="100%" stop-color="${color1}" stop-opacity="0"/></linearGradient></defs>
+        <path d="M 0 100 L ${pts} L 100 100 Z" fill="url(#g_${containerId})"/>
+        <polyline points="${pts}" fill="none" stroke="${color1}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;padding:0 5px">
+        ${labels.map(l => `<span style="font-size:10px;color:var(--t3);font-family:'JetBrains Mono'">${l}</span>`).join("")}
+      </div>`;
+        };
+
+        window.updateDeadlineCountdowns = function () {
+            const dl = [
+                { id: "cd-dl-itr", date: "2025-07-31T23:59:59" },
+                { id: "cd-dl-gst", date: "2026-04-20T23:59:59" },
+                { id: "cd-dl-adv", date: "2025-06-15T23:59:59" }
+            ];
+            const now = new Date().getTime();
+            dl.forEach(d => {
+                const el = document.getElementById(d.id); if (!el) return;
+                const target = new Date(d.date).getTime();
+                const diff = target - now;
+                if (diff < 0) { el.textContent = "Deadline Passed"; return; }
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hrs = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                el.textContent = `${days}d ${hrs}h remaining`;
+            });
+        };
+
 
         // ─── TAXBOT KNOWLEDGE BASE (works without API key) ───
         var TAXBOT_KB = {
@@ -244,7 +330,7 @@
 
 
         const firebaseConfig = {
-            apiKey: "AIzaSyA5aQw8SvGUGbnZIWQPRzscCWqLQ2jNNNE",
+            apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
             authDomain: "ledgerx-47da3.firebaseapp.com",
             projectId: "ledgerx-47da3",
             storageBucket: "ledgerx-47da3.firebasestorage.app",
@@ -253,9 +339,9 @@
         };
 
         // OCR.space — get free key at https://ocr.space/ocrapi ("helloworld" = free tier, 25k req/month)
-        const OCR_API_KEY = "helloworld";
+        const OCR_API_KEY = "PASTE_YOUR_OCR_API_KEY_HERE";
         // Groq API — fast, free tier available at https://console.groq.com/keys
-        const GROQ_API_KEY = "PASTE_YOUR_GROQ_KEY_HERE";
+        const GROQ_API_KEY = "PASTE_YOUR_GROQ_API_KEY_HERE";
         const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
         const GROQ_MODEL = "llama-3.1-8b-instant"; // Fast and efficient for chat and analysis
         // Groq is integrated via direct REST API - proxy fallback remains for other services if needed
@@ -498,7 +584,9 @@
             const statusIcons = { pending: "⏳", active: "✅", completed: "🏁", rejected: "❌" };
             wrap.innerHTML = bookings.map(b => {
                 const sc = statusColors[b.status] || "var(--t2)", si = statusIcons[b.status] || "📋";
-                return `<div class="prog-item">
+                const isPaid = b.paymentStatus === 'paid';
+                const hasRequest = b.paymentRequested && !isPaid;
+                return `<div class="prog-item ${hasRequest ? 'prog-req' : ''}">
       <div class="prog-dot pd-b">👤</div>
       <div class="prog-info"><div class="prog-name">${b.caName}</div>
         <div style="font-size:.75rem;margin-top:3px"><span style="color:${sc};font-weight:600">${si} ${b.status.charAt(0).toUpperCase() + b.status.slice(1)}</span><span style="color:var(--t3)"> · ${fmtDate(b.createdAt)}</span></div>
@@ -506,7 +594,8 @@
       ${b.status !== "rejected" ? `
         <div style="display:flex;gap:6px;margin-top:8px">
           <button class="btn btn-ghost btn-sm" onclick="openChat('${b.id}','${b.caId}','${b.caName}')">💬 Message</button>
-          ${b.paymentStatus !== 'paid' ? `<button class="btn btn-primary btn-sm" onclick="initiatePayment('${b.id}','${b.caName}',${b.requestedAmount || b.caFee || 1500})">💳 Pay ₹${b.requestedAmount || b.caFee || 1500}</button>` : `<span style="font-size:.75rem;color:var(--green);font-weight:600;display:flex;align-items:center;gap:4px">✅ Paid</span>`}
+          ${isPaid ? `<span class="p-paid"><i class="ph-fill ph-check-circle"></i> Paid ₹${b.paidAmount || b.requestedAmount}</span>` :
+                            `<button class="btn ${hasRequest ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="initiatePayment('${b.id}','${b.caName}',${b.requestedAmount || b.caFee || 1500})">💳 ${hasRequest ? 'Pay Requested' : 'Pay'} ₹${b.requestedAmount || b.caFee || 1500}</button>`}
         </div>` : ""}
     </div>`;
             }).join("");
@@ -534,10 +623,27 @@
             const snap = await getDoc(doc(db, "documents", docId)); if (!snap.exists()) return;
             const d = snap.data();
             el("analysis-content").innerHTML = `
-    <h3 style="font-family:'Syne',sans-serif;margin-bottom:14px">📄 ${d.fileName}</h3>
-    <div style="background:var(--s2);border-radius:12px;padding:18px;font-size:.88rem;line-height:1.8;white-space:pre-wrap;color:var(--t2)">${d.aiAnalysis || "No analysis available."}</div>
-    <div style="margin-top:12px;padding:12px;background:rgba(37,99,235,.06);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--t3)">OCR Text:<br>${(d.ocrText || "").slice(0, 400)}...</div>
-    <button class="btn btn-ghost btn-md" onclick="closeModal('analysis-modal')" style="margin-top:16px">Close</button>`;
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div style="font-size:2rem">📄</div>
+        <div>
+            <h3 style="font-family:'Syne',sans-serif;font-size:1.2rem;margin:0">${d.fileName}</h3>
+            <div style="font-size:.75rem;color:var(--t3);margin-top:3px">Analyzed on ${fmtDate(d.createdAt)} · ${d.fileSize || "Size unknown"}</div>
+        </div>
+    </div>
+    
+    <div style="margin-bottom:24px">
+        <label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--blue-l);font-weight:700;margin-bottom:10px">🤖 AI Expert Summary</label>
+        <div style="background:var(--s2);border-radius:12px;padding:20px;font-size:.9rem;line-height:1.7;white-space:pre-wrap;color:var(--t2);border:1px solid rgba(59,130,246,.15)">${d.aiAnalysis || "No analysis available."}</div>
+    </div>
+
+    <div>
+        <label style="display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--t3);font-weight:700;margin-bottom:10px">📄 Raw Extracted Text (OCR)</label>
+        <div style="max-height:250px;overflow-y:auto;padding:15px;background:rgba(0,0,0,.2);border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--t3);line-height:1.6;border:1px solid rgba(255,255,255,.05)">${(d.ocrText || "No text could be extracted.").replace(/\n/g, "<br>")}</div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:12px">
+        <button class="btn btn-ghost btn-md" onclick="closeModal('analysis-modal')" style="flex:1">Close</button>
+    </div>`;
             openModal("analysis-modal");
         };
 
@@ -569,20 +675,23 @@
             const wrap = el("cad-clients");
             if (!bookings.length) { wrap.innerHTML = emptyState("👥", "No clients yet", "Clients who book you appear here."); return; }
             const statusColor = { pending: "s-pend", active: "s-on", completed: "s-done", rejected: "" };
-            wrap.innerHTML = `<div class="ct-head"><span>Client</span><span>Status</span><span>Booked On</span><span>Actions</span></div>
+            wrap.innerHTML = `<div class="ct-head"><span>Client</span><span>Status</span><span>Payment</span><span>Actions</span></div>
     ${bookings.map(b => {
                 const sc = statusColor[b.status] || "s-on";
-                const ss = b.status === "rejected" ? "background:var(--red-d);color:var(--red)" : "";
+                const isPaid = b.paymentStatus === 'paid';
+                const isRequested = b.paymentRequested && !isPaid;
+                const payStat = isPaid ? `<span class="stat-tag st-paid">Paid</span>` : isRequested ? `<span class="stat-tag st-req">Requested</span>` : `<span class="stat-tag st-none">Not Requested</span>`;
+
                 return `<div class="ct-row">
         <div class="ct-name"><div class="ct-av av-b">${(b.clientName || "?")[0].toUpperCase()}</div>${b.clientName}</div>
-        <span class="prog-status ${sc}" style="${ss}">${b.status}</span>
-        <span style="color:var(--t3);font-size:.82rem">${fmtDate(b.createdAt)}</span>
+        <span class="prog-status ${sc}">${b.status}</span>
+        <div class="ct-pay">${payStat} ${isPaid ? '<span style="font-size:.7rem;color:var(--t3)">₹' + (b.paidAmount || b.requestedAmount) + '</span>' : ''}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="openChat('${b.id}','${b.clientId}','${b.clientName}')">Message</button>
           <button class="btn btn-ghost btn-sm" onclick="viewClientDocs('${b.clientId}','${b.clientName}')">Docs</button>
-          ${b.status === "pending" ? `<button class="btn btn-sm" style="background:var(--green-d);color:var(--green);border:1px solid rgba(16,185,129,.3)" onclick="updateBookingStatus('${b.id}','active','${b.clientName}')">✓ Accept</button><button class="btn btn-sm" style="background:var(--red-d);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="updateBookingStatus('${b.id}','rejected','${b.clientName}')">✕ Decline</button>` : ""}
+          ${b.status === "pending" ? `<button class="btn btn-sm" style="background:var(--green-d);color:var(--green);border:1px solid rgba(16,185,129,.3)" onclick="updateBookingStatus('${b.id}','active','${b.clientName}')">✓ Accept</button>` : ""}
           ${b.status === "active" ? `<button class="btn btn-sm" style="background:var(--green-d);color:var(--green);border:1px solid rgba(16,185,129,.3)" onclick="updateBookingStatus('${b.id}','completed','${b.clientName}')">✓ Complete</button>` : ""}
-          <button class="btn btn-sm" style="background:var(--gold-d);color:var(--gold);border:1px solid rgba(255,215,0,.3)" onclick="requestPayment('${b.id}','${b.clientName}')">💰 Request Payment</button>
+          ${!isPaid && !isRequested ? `<button class="btn btn-sm" style="background:var(--gold-d);color:var(--gold);border:1px solid rgba(255,215,0,.3)" onclick="requestPayment('${b.id}','${b.clientName}')">💰 Request Payment</button>` : ""}
         </div>
       </div>`;
             }).join("")}`;
@@ -667,19 +776,25 @@
             if (!currentUser) { toast("Please log in first.", "error"); return; }
             if (file.size > 5 * 1024 * 1024) { toast("File too large. Max 5MB.", "error"); return; }
             const uploadBtn = el("upload-status");
-            uploadBtn.textContent = "⏳ Uploading..."; uploadBtn.style.display = "block";
+            uploadBtn.textContent = "🔍 Scanning document..."; uploadBtn.style.display = "block";
             try {
-                const storRef = ref(stor, `docs/${currentUser.uid}/${Date.now()}_${file.name}`);
-                const snap = await uploadBytes(storRef, file);
-                const fileURL = await getDownloadURL(snap.ref);
-                uploadBtn.textContent = "🔍 Running OCR...";
+                // Step 1: OCR — send file directly to OCR.space (no Firebase Storage needed)
                 let ocrText = "";
                 try {
-                    const fd = new FormData(); fd.append("file", file); fd.append("apikey", OCR_API_KEY); fd.append("language", "eng"); fd.append("isTable", "true"); fd.append("OCREngine", "2");
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    fd.append("apikey", OCR_API_KEY);
+                    fd.append("language", "eng");
+                    fd.append("isTable", "true");
+                    fd.append("OCREngine", "2");
                     const ocrRes = await fetch("https://api.ocr.space/parse/image", { method: "POST", body: fd });
                     const ocrData = await ocrRes.json();
+                    if (ocrData.IsErroredOnProcessing) throw new Error(ocrData.ErrorMessage?.[0] || ocrData.ErrorDetails || "OCR processing failed");
                     ocrText = ocrData?.ParsedResults?.[0]?.ParsedText || "";
-                } catch (ocrErr) { ocrText = "[OCR failed: " + ocrErr.message + "]"; }
+                    if (!ocrText) throw new Error("No text found in document. Make sure the image is clear.");
+                } catch (ocrErr) { throw new Error("OCR Failed: " + ocrErr.message); }
+
+                // Step 2: AI Analysis via Groq
                 uploadBtn.textContent = "🤖 AI Analyzing...";
                 let aiAnalysis = "";
                 try {
@@ -702,15 +817,33 @@ Be concise and structured. Use bullet points. Analyze this document text:\n\n${o
                         })
                     });
                     const gd = await groqRes.json();
+                    if (gd.error) throw new Error(gd.error.message || "Groq analysis failed");
                     aiAnalysis = gd.choices?.[0]?.message?.content || "Analysis unavailable.";
                 } catch (cErr) { aiAnalysis = "[AI analysis failed: " + cErr.message + "]"; }
-                const docRef = await addDoc(collection(db, "documents"), { ownerId: currentUser.uid, ownerName: currentProfile.displayName, fileName: file.name, fileSize: formatBytes(file.size), fileURL, ocrText, aiAnalysis, analyzed: true, createdAt: serverTimestamp() });
+
+                // Step 3: Save results to Firestore (no file URL since we skipped Storage)
+                uploadBtn.textContent = "💾 Saving results...";
+                await addDoc(collection(db, "documents"), {
+                    ownerId: currentUser.uid,
+                    ownerName: currentProfile.displayName,
+                    fileName: file.name,
+                    fileSize: formatBytes(file.size),
+                    fileURL: "",
+                    ocrText,
+                    aiAnalysis,
+                    analyzed: true,
+                    createdAt: serverTimestamp()
+                });
                 updateRiskScore(ocrText, aiAnalysis);
                 uploadBtn.textContent = "✅ Analysis complete!";
                 setTimeout(() => { uploadBtn.style.display = "none"; }, 2500);
                 toast("Document analyzed successfully! ✓", "success");
                 loadClientDash();
-            } catch (e) { uploadBtn.style.display = "none"; toast("Upload failed: " + e.message, "error"); }
+            } catch (e) {
+                console.error("Upload error:", e);
+                uploadBtn.style.display = "none";
+                toast("Upload failed: " + e.message, "error");
+            }
         };
 
         async function updateRiskScore(ocrText, aiAnalysis) {
@@ -841,7 +974,8 @@ ${ocrText.slice(0, 500)}`
                     });
                     toast("Payment Successful! 🎉", "success");
                     closeModal("payment-modal");
-                    loadClientDash();
+                    // Refresh current view
+                    if (currentProfile?.role === "ca") loadCADash(); else loadClientDash();
                 } catch (e) {
                     toast("Payment failed: " + e.message, "error");
                     setBtnLoading("pay-btn", false);
@@ -859,13 +993,15 @@ ${ocrText.slice(0, 500)}`
                     paymentStatus: 'pending_payment'
                 });
                 const bSnap = await getDoc(doc(db, "bookings", bookingId));
-                await addDoc(collection(db, "notifications"), {
-                    toId: bSnap.data().clientId,
-                    fromName: currentProfile.displayName,
-                    message: `CA ${currentProfile.displayName} has requested a payment of ₹${amount} for your filing.`,
-                    read: false,
-                    createdAt: serverTimestamp()
-                });
+                if (bSnap.exists()) {
+                    await addDoc(collection(db, "notifications"), {
+                        toId: bSnap.data().clientId,
+                        fromName: currentProfile.displayName,
+                        message: `CA ${currentProfile.displayName} has requested a payment of ₹${amount} for your filing.`,
+                        read: false,
+                        createdAt: serverTimestamp()
+                    });
+                }
                 toast("Payment request sent to " + clientName, "success");
                 loadCADash();
             } catch (e) {
@@ -1965,6 +2101,47 @@ ${ocrText.slice(0, 500)}`
             padding: 3px 10px;
             border-radius: 99px;
             border: 1px solid
+        }
+
+        /* PAYMENT STATUS TAGS */
+        .stat-tag {
+            font-size: .65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .st-none {
+            background: rgba(255, 255, 255, .05);
+            color: var(--t3);
+        }
+
+        .st-req {
+            background: var(--gold-d);
+            color: var(--gold);
+        }
+
+        .st-paid {
+            background: var(--green-d);
+            color: var(--green);
+        }
+
+        .prog-req {
+            border-left: 3px solid var(--gold) !important;
+            background: rgba(255, 215, 0, .03) !important;
+        }
+
+        .p-paid {
+            font-size: .75rem;
+            color: var(--green);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid var(--green-d);
+            padding: 4px 10px;
+            border-radius: 6px;
         }
 
         .st-b {

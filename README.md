@@ -7,7 +7,8 @@ LedgerX is a premium, AI-powered marketplace connecting clients with Chartered A
 - **TaxBot AI**: High-speed, real-time tax assistance powered by **Groq Llama-3.1-8b**, specialized in Indian tax laws.
 - **Smart Marketplace**: Connect with verified CAs ranked by an AI scoring system (Specialization, Experience, Rating, Price).
 - **Document Intelligence**: Instant OCR extraction and **Groq-driven** analysis for document categorization and error detection.
-- **Fraud Risk Assessment**: Real-time risk scoring for uploaded documents using Llama-3 anomaly detection.
+- **Tax Liability Preview**: Real-time AI estimation of tax refund or payable amounts based on uploaded documents using Llama-3.
+- **AI Smart Folders**: Documents are automatically categorized (Identity, Income, Investments, Deductions) on upload.
 - **Unified Messaging**: Integrated communication system allowing Clients and CAs to chat instantly without database indexing delays.
 - **Secure Storage**: Firebase-backed document management and real-time database sync.
 
