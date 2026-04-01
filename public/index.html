@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>LedgerX Dashboard</title>
+    <!-- React & ReactDOM (Production) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel Standalone (To compile JSX in the browser) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useState } = React;
+
+    function App() {
+      const [isDarkMode, setIsDarkMode] = useState(false);
+
+      // 1. Smart Document Onboarding State
+      const [docs, setDocs] = useState({
+        kyc: false,
+        salary: false,
+        taxSavings: false,
+        compliance: false,
+        business: false,
+      });
+
+      // 2. 80C Tax Estimator State
+      const [salaryAmt, setSalaryAmt] = useState('');
+      const [invest80c, setInvest80c] = useState('');
+
+      // 3. AI P&L Generator State
+      const [sales, setSales] = useState('');
+      const [expenses, setExpenses] = useState('');
+
+      // Toggles
+      const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+      // Handlers
+      const handleUpload = (key) => setDocs({ ...docs, [key]: true });
+
+      const handleReset = () => {
+        setDocs({
+          kyc: false,
+          salary: false,
+          taxSavings: false,
+          compliance: false,
+          business: false,
+        });
+        setSalaryAmt('');
+        setInvest80c('');
+        setSales('');
+        setExpenses('');
+      };
+
+      // Tax Logic
+      const calculateTax = () => {
+        const s = parseFloat(salaryAmt) || 0;
+        const i = parseFloat(invest80c) || 0;
+        if (s === 0) return null;
+        const standardDeduction = 50000;
+        const capped80c = Math.min(i, 150000);
+        const taxable = s - standardDeduction - capped80c;
+        return taxable > 0 ? taxable : 0;
+      };
+
+      // P&L Logic
+      const calculatePnL = () => {
+        const sl = parseFloat(sales) || 0;
+        const ex = parseFloat(expenses) || 0;
+        if (sl === 0 && ex === 0) return null;
+        const profit = sl - ex;
+        const margin = sl > 0 ? (profit / sl) * 100 : 0;
+        
+        let insight = '';
+        let insightColor = '';
+        
+        if (margin > 20) {
+          insight = 'Excellent Health';
+          insightColor = isDarkMode ? '#34bfa3' : '#00875a';
+        } else if (margin >= 0) {
+          insight = 'Review Costs';
+          insightColor = isDarkMode ? '#fbbf24' : '#eab308';
+        } else {
+          insight = 'Critical - Operating at Loss';
+          insightColor = isDarkMode ? '#f87171' : '#dc2626';
+        }
+
+        return { profit, margin: margin.toFixed(1), insight, insightColor };
+      };
+
+      const currentTax = calculateTax();
+      const currentPnL = calculatePnL();
+
+      return (
+        <div className={`lx-container ${isDarkMode ? 'dark-mode' : ''}`}>
+          <style>{`
+            :root {
+              --bg-color: #f7f9fc;
+              --text-color: #1e293b;
+              --card-bg: #ffffff;
+              --border: #e2e8f0;
+              --primary: #2563eb;
+              --success: #10b981;
+              --hint: #64748b;
+            }
+            .dark-mode {
+              --bg-color: #0f172a;
+              --text-color: #f8fafc;
+              --card-bg: #1e293b;
+              --border: #334155;
+              --primary: #3b82f6;
+              --success: #10b981;
+              --hint: #94a3b8;
+            }
+            body {
+              margin: 0;
+              background-color: var(--bg-color);
+              -webkit-tap-highlight-color: transparent;
+            }
+            .lx-container {
+              background-color: var(--bg-color);
+              color: var(--text-color);
+              min-height: 100vh;
+              padding: 24px 16px;
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              font-size: 14px;
+              transition: background-color 0.3s, color 0.3s;
+            }
+            .lx-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 24px;
+              padding-bottom: 12px;
+              border-bottom: 1px solid var(--border);
+            }
+            .lx-title {
+              font-size: 20px;
+              font-weight: 700;
+              margin: 0;
+              letter-spacing: -0.5px;
+            }
+            .lx-card {
+              background-color: var(--card-bg);
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              padding: 20px;
+              margin-bottom: 24px;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+              transition: background-color 0.3s, border-color 0.3s;
+            }
+            .lx-card-title {
+              font-size: 16px;
+              font-weight: 600;
+              margin-top: 0;
+              margin-bottom: 16px;
+              display: flex;
+              align-items: center;
+            }
+            .lx-folder-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 12px 0;
+              border-bottom: 1px solid var(--border);
+            }
+            .lx-folder-item:last-child {
+              border-bottom: none;
+            }
+            .lx-folder-info {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              flex: 1;
+              padding-right: 12px;
+            }
+            .lx-folder-name {
+              font-weight: 600;
+              font-size: 14px;
+            }
+            .lx-hint {
+              font-size: 11px;
+              color: var(--hint);
+              line-height: 1.4;
+            }
+            .lx-btn {
+              background-color: var(--primary);
+              color: #ffffff;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 12px;
+              font-weight: 600;
+              white-space: nowrap;
+            }
+            .lx-btn.done {
+              background-color: var(--success);
+            }
+            .lx-btn-icon {
+              background: transparent;
+              color: var(--text-color);
+              border: 1px solid var(--border);
+              padding: 6px 12px;
+              border-radius: 6px;
+              font-size: 14px;
+              cursor: pointer;
+            }
+            .lx-input-group {
+              margin-bottom: 16px;
+            }
+            .lx-input-group label {
+              display: block;
+              margin-bottom: 6px;
+              font-weight: 500;
+              font-size: 13px;
+            }
+            .lx-input {
+              width: 100%;
+              padding: 10px 12px;
+              border: 1px solid var(--border);
+              border-radius: 6px;
+              background-color: var(--bg-color);
+              color: var(--text-color);
+              box-sizing: border-box;
+              font-size: 14px;
+            }
+            .lx-input:focus {
+              outline: none;
+              border-color: var(--primary);
+            }
+            .lx-result {
+              margin-top: 16px;
+              padding: 14px;
+              background-color: var(--bg-color);
+              border-radius: 8px;
+              border: 1px solid var(--border);
+              font-weight: 600;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .lx-insight {
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: 600;
+              color: #fff;
+            }
+            .lx-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+            }
+            .lx-speed-actions {
+              display: flex;
+              justify-content: center;
+              margin-top: 32px;
+            }
+            .lx-reset-btn {
+              color: #ef4444;
+              background: transparent;
+              border: 1px solid #ef4444;
+              padding: 10px 24px;
+              border-radius: 6px;
+              font-weight: 600;
+              cursor: pointer;
+            }
+          `}</style>
+
+          <header className="lx-header">
+            <h1 className="lx-title">LedgerX</h1>
+            <button onClick={toggleTheme} className="lx-btn-icon">
+              {isDarkMode ? '☀️ Light' : '🌙 Dark'}
+            </button>
+          </header>
+
+          <section className="lx-card">
+            <h2 className="lx-card-title">📁 Digital Folders</h2>
+            
+            <div className="lx-folder-item">
+              <div className="lx-folder-info">
+                <span className="lx-folder-name">PAN/Aadhaar (KYC)</span>
+                <span className="lx-hint">Verify your identity instantly.</span>
+              </div>
+              <button className={`lx-btn ${docs.kyc ? 'done' : ''}`} onClick={() => handleUpload('kyc')}>
+                {docs.kyc ? '✅ Done' : 'Upload'}
+              </button>
+            </div>
+
+            <div className="lx-folder-item">
+              <div className="lx-folder-info">
+                <span className="lx-folder-name">Form 16 (Salary)</span>
+                <span className="lx-hint">Required for salaried professionals.</span>
+              </div>
+              <button className={`lx-btn ${docs.salary ? 'done' : ''}`} onClick={() => handleUpload('salary')}>
+                {docs.salary ? '✅ Done' : 'Upload'}
+              </button>
+            </div>
+
+            <div className="lx-folder-item">
+              <div className="lx-folder-info">
+                <span className="lx-folder-name">80C/80D Proofs (Tax Savings)</span>
+                <span className="lx-hint">LIC, PPF, ELSS, Health Insurance.</span>
+              </div>
+              <button className={`lx-btn ${docs.taxSavings ? 'done' : ''}`} onClick={() => handleUpload('taxSavings')}>
+                {docs.taxSavings ? '✅ Done' : 'Upload'}
+              </button>
+            </div>
+
+            <div className="lx-folder-item">
+              <div className="lx-folder-info">
+                <span className="lx-folder-name">AIS/TIS (Compliance)</span>
+                <span className="lx-hint">Annual Information Statement from IT Dept.</span>
+              </div>
+              <button className={`lx-btn ${docs.compliance ? 'done' : ''}`} onClick={() => handleUpload('compliance')}>
+                {docs.compliance ? '✅ Done' : 'Upload'}
+              </button>
+            </div>
+
+            <div className="lx-folder-item">
+              <div className="lx-folder-info">
+                <span className="lx-folder-name">GST/Sales Data (Business)</span>
+                <span className="lx-hint">For freelancers and business owners.</span>
+              </div>
+              <button className={`lx-btn ${docs.business ? 'done' : ''}`} onClick={() => handleUpload('business')}>
+                {docs.business ? '✅ Done' : 'Upload'}
+              </button>
+            </div>
+          </section>
+
+          <section className="lx-card">
+            <h2 className="lx-card-title">🧮 80C Tax Estimator</h2>
+            <div className="lx-grid">
+              <div className="lx-input-group">
+                <label>Annual Salary (₹)</label>
+                <input type="number" className="lx-input" placeholder="1200000" value={salaryAmt} onChange={(e) => setSalaryAmt(e.target.value)} />
+              </div>
+              <div className="lx-input-group">
+                <label>80C Investment (₹)</label>
+                <input type="number" className="lx-input" placeholder="150000" value={invest80c} onChange={(e) => setInvest80c(e.target.value)} />
+              </div>
+            </div>
+            {currentTax !== null && (
+              <div className="lx-result">
+                <span>Final Taxable Income:</span>
+                <span>₹{currentTax.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+          </section>
+
+          <section className="lx-card">
+            <h2 className="lx-card-title">🤖 AI Profit & Loss Generator</h2>
+            <div className="lx-grid">
+              <div className="lx-input-group">
+                <label>Total Sales (₹)</label>
+                <input type="number" className="lx-input" placeholder="500000" value={sales} onChange={(e) => setSales(e.target.value)} />
+              </div>
+              <div className="lx-input-group">
+                <label>Total Expenses (₹)</label>
+                <input type="number" className="lx-input" placeholder="350000" value={expenses} onChange={(e) => setExpenses(e.target.value)} />
+              </div>
+            </div>
+            
+            {currentPnL && (
+              <div className="lx-result" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Net Profit:</span>
+                  <span>₹{currentPnL.profit.toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Margin ({currentPnL.margin}%):</span>
+                  <span className="lx-insight" style={{ backgroundColor: currentPnL.insightColor }}>
+                    {currentPnL.insight}
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <div className="lx-speed-actions">
+            <button onClick={handleReset} className="lx-reset-btn">↺ Reset All Data</button>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    </script>
+</body>
+</html>
